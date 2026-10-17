@@ -144,6 +144,17 @@ footer { margin-top: 64px; padding-block: 24px 32px; border-top: 1px solid var(-
   .crow .k { grid-column: 1 / -1; }
 }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+/* apps */
+.apps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.app{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:20px;text-decoration:none;color:var(--fg)}
+.app:hover{border-color:var(--accent)}
+.app .k{font-family:var(--font-mono);font-size:12px;letter-spacing:.04em;color:var(--accent);margin-bottom:8px;text-transform:uppercase}
+.app h3{font-family:var(--font-display);font-weight:600;font-size:21px;line-height:1.25;margin:0 0 8px}
+.app p{color:var(--muted);font-size:15px;margin:0 0 14px}
+.app .tech{font-family:var(--font-mono);font-size:12px;color:var(--muted);margin-top:auto;padding-top:12px;border-top:1px solid var(--line)}
+.app .go{font-family:var(--font-mono);font-size:13px;color:var(--accent);margin-top:10px}
+@media (max-width:820px){.apps{grid-template-columns:minmax(0,1fr)}}
 </style>
 
 </head>
@@ -154,6 +165,7 @@ footer { margin-top: 64px; padding-block: 24px 32px; border-top: 1px solid var(-
     <nav class="nav" aria-label="Sections">
       <a href="#profile">Profile</a>
       <a href="#experience">Experience</a>
+      <a href="#projects">Apps</a>
       <a href="#skills">Skills</a>
       <a href="#education">Education</a>
       <a href="#contact">Contact</a>
@@ -235,6 +247,15 @@ footer { margin-top: 64px; padding-block: 24px 32px; border-top: 1px solid var(-
     <div class="resp">
       <b>Key responsibilities</b>
       <p>Analyzed, then effectively strategized in regard to business goals, deadlines, schedules, needed resources and team member coordination.</p>
+    </div>
+  </section>
+
+  <section id="projects">
+    <div class="sec-head"><h2>Apps</h2><span class="sec-note">built by me, they run in your browser</span></div>
+    <div class="apps">
+      <a class="app" href="apps/subnet.html"><span class="k">Networking</span><h3>IPv4 Subnet Calculator</h3><p>Enter an address and prefix to get the network, broadcast, usable range and binary view, then split the block into smaller subnets.</p><span class="tech">CIDR | VLSM | binary view</span><span class="go">Open app</span></a>
+      <a class="app" href="apps/llm-judge.html"><span class="k">LLM evaluation</span><h3>LLM Response Judge</h3><p>Score two model answers on a weighted rubric, flag problems, pick a preference and check it against the scores before writing the reason.</p><span class="tech">Rubric scoring | preference check</span><span class="go">Open app</span></a>
+      <a class="app" href="apps/search-rater.html"><span class="k">Search quality</span><h3>Search Relevance Rater</h3><p>Rate results from 0 to 4 for a query and reorder them to watch DCG, NDCG and precision change.</p><span class="tech">DCG | NDCG | precision</span><span class="go">Open app</span></a>
     </div>
   </section>
 
