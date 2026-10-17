@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<title>Search Relevance Rater</title>
+<meta name="description" content="Rate search results for a query and see DCG, NDCG and precision update as you reorder them.">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<style>
+:root{--bg:#0a1822;--surface:#10252f;--surface-2:#14303c;--line:#234552;--fg:#e5f0f1;--muted:#9bb3b8;--accent:#2ec4b6;--ink:#062a27;--spark:#ff7a3d;--bad:#ff7b72;--ok:#3fb950;--font-display:"Chakra Petch","Segoe UI",system-ui,sans-serif;--font-body:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;--font-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;color-scheme:dark}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#f3f8f8;--surface:#ffffff;--surface-2:#e8f2f2;--line:#c5d9db;--fg:#10242b;--muted:#4c6870;--accent:#0b7f76;--ink:#ffffff;--spark:#c4501a;--bad:#c0392b;--ok:#1a7f37;color-scheme:light}}
+:root[data-theme="light"]{--bg:#f3f8f8;--surface:#ffffff;--surface-2:#e8f2f2;--line:#c5d9db;--fg:#10242b;--muted:#4c6870;--accent:#0b7f76;--ink:#ffffff;--spark:#c4501a;--bad:#c0392b;--ok:#1a7f37;color-scheme:light}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:16px;line-height:1.55;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0}
+a{color:var(--accent);text-underline-offset:3px}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+.wrap{max-width:980px;margin:0 auto;padding-block:24px 56px}
+.crumb{font-family:var(--font-mono);font-size:13px;color:var(--muted);margin:0 0 28px}
+h1{font-family:var(--font-display);font-weight:700;font-size:clamp(30px,5vw,44px);line-height:1.1;margin:0 0 10px;text-wrap:balance}
+h2{font-family:var(--font-display);font-weight:600;font-size:21px;margin:32px 0 12px}
+.lede{color:var(--muted);max-width:68ch;margin:0 0 24px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px}
+label{display:block;font-family:var(--font-mono);font-size:12px;letter-spacing:.04em;color:var(--muted);margin:0 0 6px;text-transform:uppercase}
+input[type=text],select,textarea{width:100%;font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:9px 11px;min-width:0}
+textarea{resize:vertical;min-height:90px}
+.btn{font-family:var(--font-mono);font-size:14px;font-weight:500;padding:9px 16px;border-radius:6px;border:1px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer}
+.btn.primary{background:var(--accent);color:var(--ink)}
+.btn:hover{filter:brightness(1.12)}
+.mono{font-family:var(--font-mono)}
+.muted{color:var(--muted)}
+.err{color:var(--bad);font-family:var(--font-mono);font-size:14px;margin:10px 0 0;min-height:1.4em}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-family:var(--font-mono);font-size:12px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--line);color:var(--muted);font-size:14px}
+
+.res{display:grid;grid-template-columns:34px minmax(0,1fr) 190px auto;gap:10px 14px;align-items:start;padding:14px 0;border-bottom:1px solid var(--line)}
+.res:last-child{border-bottom:0}
+.rank{font-family:var(--font-mono);color:var(--accent);padding-top:8px;font-size:15px}
+.fields{display:grid;gap:8px;min-width:0}
+.mv{display:flex;gap:6px;padding-top:2px}
+.mv button{font-family:var(--font-mono);font-size:12px;padding:7px 9px;border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:6px;cursor:pointer}
+.mv button:hover{border-color:var(--accent);color:var(--accent)}
+.cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}
+.m{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px}
+.m b{display:block;font-family:var(--font-display);font-size:28px;line-height:1.1}
+.m span{font-size:13px;color:var(--muted)}
+.verdict{margin:0 0 14px;font-size:15px}
+.top{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px}
+.top .grow{flex:1 1 320px;min-width:0}
+.scale{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;font-size:13px;color:var(--muted)}
+.scale div{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.scale b{color:var(--fg);font-family:var(--font-mono);margin-right:6px}
+.actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:14px}
+@media (max-width:760px){.res{grid-template-columns:30px minmax(0,1fr)}.res .sel,.res .mv{grid-column:2}.cards{grid-template-columns:repeat(2,minmax(0,1fr))}.scale{grid-template-columns:minmax(0,1fr)}}
+</style>
+</head>
+<body>
+<main class="wrap">
+<p class="crumb"><a href="../">Naveed Akhtar</a> / Apps / Search Relevance Rater</p>
+<h1>Search Relevance Rater</h1>
+<p class="lede">Rate each result for one query on a 0 to 4 scale, then move results up and down to see how the ranking metrics react. DCG rewards putting good results first, and NDCG compares your order with the best possible order for the same ratings. This is the same kind of judgment used in search quality evaluation. Everything runs in your browser.</p>
+
+<div class="card">
+  <div class="top"><div class="grow"><label for="query">Query</label><input id="query" type="text" value="how to learn subnetting for ccna" autocomplete="off"></div></div>
+  <div class="scale">
+    <div><b>4</b>Perfect: fully answers the need</div>
+    <div><b>3</b>Excellent: very helpful</div>
+    <div><b>2</b>Good: useful, some gaps</div>
+    <div><b>1</b>Fair: marginal value</div>
+    <div><b>0</b>Bad: off-topic or harmful</div>
+  </div>
+</div>
+
+<h2>Results</h2>
+<div class="card" id="list"></div>
+<div class="actions"><button class="btn" id="add" type="button">Add result</button><button class="btn" id="example" type="button">Load example</button><button class="btn" id="clear" type="button">Clear all</button></div>
+
+<h2>Metrics</h2>
+<div class="card">
+  <p class="verdict" id="verdict"></p>
+  <div class="cards" id="cards"></div>
+  <div class="scroll"><table><thead><tr><th>Rank</th><th>Rating</th><th>Gain</th><th>Discount</th><th>DCG part</th><th>Ideal rank</th></tr></thead><tbody id="tb"></tbody></table></div>
+</div>
+<footer>Built by Naveed Akhtar from search engine evaluation and information retrieval work. <a href="../">Back to portfolio</a></footer>
+</main>
+<script>
+(function(){
+var $=function(i){return document.getElementById(i)};
+var LAB=['0 - Bad','1 - Fair','2 - Good','3 - Excellent','4 - Perfect'];
+var rows=[];
+var EX=[
+ ['Subnetting explained step by step','https://example.org/subnetting-guide','Walks through binary, masks and CIDR with worked CCNA examples and practice questions.',4],
+ ['Subnetting cheat sheet','https://example.org/cheat-sheet','One page table of prefixes, masks and block sizes. Quick reference, no explanation.',3],
+ ['Best CCNA study plan','https://example.org/ccna-plan','Twelve week plan. Mentions subnetting in week three with a short practice set.',2],
+ ['What is an IP address','https://example.org/ip-basics','General introduction to IP addressing for beginners.',1],
+ ['Cheap hosting deals','https://example.org/hosting','Compare shared hosting plans and discount codes.',0]];
+function mk(t,u,s,r){return{t:t||'',u:u||'',s:s||'',r:(r===undefined?'':r)}}
+function load(){rows=EX.map(function(e){return mk(e[0],e[1],e[2],e[3])});
+  // start in a deliberately imperfect order so the metrics show something
+  var x=rows[0];rows[0]=rows[2];rows[2]=x;
+  $('query').value='how to learn subnetting for ccna';draw()}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function draw(){
+  var h='';
+  rows.forEach(function(r,i){
+    h+='<div class="res"><div class="rank">#'+(i+1)+'</div><div class="fields">'
+     +'<input type="text" data-i="'+i+'" data-k="t" value="'+esc(r.t)+'" placeholder="Result title" aria-label="Title of result '+(i+1)+'">'
+     +'<input type="text" data-i="'+i+'" data-k="u" value="'+esc(r.u)+'" placeholder="URL" aria-label="URL of result '+(i+1)+'">'
+     +'<textarea data-i="'+i+'" data-k="s" placeholder="Snippet or what the page contains" aria-label="Snippet of result '+(i+1)+'" style="min-height:60px">'+esc(r.s)+'</textarea></div>'
+     +'<div class="sel"><select data-i="'+i+'" data-k="r" aria-label="Rating of result '+(i+1)+'"><option value="">Not rated</option>'
+     +LAB.map(function(l,k){return '<option value="'+k+'"'+(String(r.r)===String(k)?' selected':'')+'>'+l+'</option>'}).join('')+'</select></div>'
+     +'<div class="mv"><button type="button" data-a="up" data-i="'+i+'" aria-label="Move result '+(i+1)+' up">Up</button><button type="button" data-a="down" data-i="'+i+'" aria-label="Move result '+(i+1)+' down">Down</button><button type="button" data-a="del" data-i="'+i+'" aria-label="Remove result '+(i+1)+'">Remove</button></div></div>'
+  });
+  $('list').innerHTML=h||'<p class="muted" style="margin:0">No results yet. Add one or load the example.</p>';
+  calc()
+}
+function log2(x){return Math.log(x)/Math.LN2}
+function calc(){
+  var n=rows.length,tb=$('tb'),cards=$('cards'),v=$('verdict');
+  var rated=rows.filter(function(r){return r.r!==''}).length;
+  if(!n||rated<n){tb.innerHTML='';cards.innerHTML='';v.textContent=n?('Rate every result to see the metrics ('+rated+' of '+n+' rated).'):'Add results to begin.';return}
+  var g=rows.map(function(r){return Math.pow(2,+r.r)-1});
+  var dcg=0,parts=g.map(function(x,i){var d=1/log2(i+2);dcg+=x*d;return x*d});
+  var order=rows.map(function(r,i){return i}).sort(function(a,b){return (+rows[b].r)-(+rows[a].r)||a-b});
+  var ideal=order.map(function(i){return g[i]}),idcg=0;ideal.forEach(function(x,i){idcg+=x/log2(i+2)});
+  var ndcg=idcg?dcg/idcg:null;
+  var rel=rows.map(function(r){return +r.r>=2}),prec=rel.filter(Boolean).length/n;
+  var fr=rel.indexOf(true);
+  var idealRank={};order.forEach(function(ri,pos){idealRank[ri]=pos+1});
+  tb.innerHTML=rows.map(function(r,i){return '<tr><td>'+(i+1)+'</td><td>'+r.r+'</td><td>'+g[i]+'</td><td>'+(1/log2(i+2)).toFixed(3)+'</td><td>'+parts[i].toFixed(3)+'</td><td>'+idealRank[i]+'</td></tr>'}).join('');
+  cards.innerHTML=[
+    ['DCG@'+n,dcg.toFixed(3),'Your ordering'],
+    ['IDCG@'+n,idcg.toFixed(3),'Best possible ordering'],
+    ['NDCG@'+n,ndcg===null?'n/a':ndcg.toFixed(3),'DCG divided by IDCG'],
+    ['Precision@'+n,(prec*100).toFixed(0)+'%','Results rated 2 or higher']
+  ].map(function(m){return '<div class="m"><b>'+m[1]+'</b><span>'+m[0]+' - '+m[2]+'</span></div>'}).join('');
+  var msg;
+  if(ndcg===null)msg='Every result is rated 0, so there is no ideal ordering to compare against.';
+  else if(ndcg>=0.98)msg='This order is at or very near the ideal order.';
+  else if(ndcg>=0.9)msg='Good ranking. A small reorder would reach the ideal order.';
+  else if(ndcg>=0.75)msg='Mixed ranking. Some strong results sit below weaker ones.';
+  else msg='Weak ranking. The best results are buried.';
+  v.textContent=msg+(fr>=0?' First useful result is at rank '+(fr+1)+'.':' No result is rated 2 or higher.')
+}
+$('list').addEventListener('input',function(e){var t=e.target,i=t.getAttribute('data-i'),k=t.getAttribute('data-k');if(i===null||!k)return;rows[+i][k]=t.value;if(k==='r')calc()});
+$('list').addEventListener('click',function(e){
+  var b=e.target.closest('button');if(!b)return;var i=+b.getAttribute('data-i'),a=b.getAttribute('data-a');
+  if(a==='up'&&i>0){var x=rows[i];rows[i]=rows[i-1];rows[i-1]=x}
+  else if(a==='down'&&i<rows.length-1){var y=rows[i];rows[i]=rows[i+1];rows[i+1]=y}
+  else if(a==='del'){rows.splice(i,1)}
+  draw()
+});
+$('add').addEventListener('click',function(){if(rows.length<12){rows.push(mk());draw()}});
+$('example').addEventListener('click',load);
+$('clear').addEventListener('click',function(){rows=[];draw()});
+load();
+})();
+</script>
+</body>
+</html>
